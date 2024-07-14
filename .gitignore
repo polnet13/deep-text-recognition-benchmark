@@ -1,3 +1,5 @@
+dataset_maker_nbp/
+demo_image/
 **/saved_models/*
 **/data_lmdb_release/*
 **/image_release/*
