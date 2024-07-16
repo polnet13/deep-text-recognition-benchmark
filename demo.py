@@ -13,6 +13,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def demo(opt):
+    print(f'opt: \n\n{opt}')
     """ model configuration """
     if 'CTC' in opt.Prediction:
         converter = CTCLabelConverter(opt.character)
@@ -23,24 +24,13 @@ def demo(opt):
     if opt.rgb:
         opt.input_channel = 3
     model = Model(opt)
-    print(f'''
-        opt에 저장된 파라미터 정보
-        imgH: {opt.imgH}
-        imgW: {opt.imgW}
-        num_fiducial: {opt.num_fiducial}
-        input_channel: {opt.input_channel}
-        output_channel: {opt.output_channel}
-        hidden_size: {opt.hidden_size}
-        num_class: {opt.num_class}
-        batch_max_length: {opt.batch_max_length}
-        Transformation: {opt.Transformation}
-        FeatureExtraction: {opt.FeatureExtraction}
-        SequenceModeling: {opt.SequenceModeling}
-        Prediction: {opt.Prediction}''')
+    print('model input parameters', opt.imgH, opt.imgW, opt.num_fiducial, opt.input_channel, opt.output_channel,
+          opt.hidden_size, opt.num_class, opt.batch_max_length, opt.Transformation, opt.FeatureExtraction,
+          opt.SequenceModeling, opt.Prediction)
     model = torch.nn.DataParallel(model).to(device)
 
     # load model
-    print('사전학습된 모델을 불러옴 %s' % opt.saved_model)
+    print('loading pretrained model from %s' % opt.saved_model)
     model.load_state_dict(torch.load(opt.saved_model, map_location=device))
 
     # prepare data. two demo images from https://github.com/bgshih/crnn#run-demo
@@ -81,7 +71,7 @@ def demo(opt):
 
             log = open(f'./log_demo_result.txt', 'a')
             dashed_line = '-' * 80
-            head = f'{"이미지 경로":25s}\t{"예측 라벨":25s}\t 정확도'
+            head = f'{"image_path":25s}\t{"predicted_labels":25s}\tconfidence score'
             
             print(f'{dashed_line}\n{head}\n{dashed_line}')
             log.write(f'{dashed_line}\n{head}\n{dashed_line}\n')
@@ -95,7 +85,10 @@ def demo(opt):
                     pred_max_prob = pred_max_prob[:pred_EOS]
 
                 # calculate confidence score (= multiply of pred_max_prob)
-                confidence_score = pred_max_prob.cumprod(dim=0)[-1]
+                try:
+                    confidence_score = pred_max_prob.cumprod(dim=0)[-1]
+                except:
+                    confidence_score = 0
 
                 print(f'{img_name:25s}\t{pred:25s}\t{confidence_score:0.4f}')
                 log.write(f'{img_name:25s}\t{pred:25s}\t{confidence_score:0.4f}\n')
@@ -103,13 +96,6 @@ def demo(opt):
             log.close()
 
 if __name__ == '__main__':
-    # opt.Transformation = 'TPS'
-    # opt.FeatureExtraction = 'ResNet'
-    # opt.SequenceModeling = 'BiLSTM'
-    # opt.Prediction = 'Attn'
-    # opt.character = " 0123456789천기문남포밀함익유관대악순세수의마고령타김음도홍덕택서흥춘시읍더광노옹횡명이안과연아산러거장리암바퍼평로버완홀릉성주중원백사상무전두속괴보실진어제달자통창태북당작종계옥증머터가미위봉항충하군은철추칠나예강랑송담등커울목양구차경곡귀초영저카합월인룡용공래단정논화라청삼왕녕파동부여례금해허신운너처다임척오선"
-    # opt.image_folder ="/home/prudent13/makeDataset/deep-text-recognition-benchmark/demo_image"
-    # opt.path = "/home/prudent13/makeDataset/deep-text-recognition-benchmark/saved_models/TPS-ResNet-BiLSTM-Attn-Seed1111/best_accuracy.pth"
     parser = argparse.ArgumentParser()
     parser.add_argument('--image_folder', required=True, help='path to image_folder which contains text images')
     parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
@@ -118,7 +104,7 @@ if __name__ == '__main__':
     """ Data processing """
     parser.add_argument('--batch_max_length', type=int, default=25, help='maximum-label-length')
     parser.add_argument('--imgH', type=int, default=32, help='the height of the input image')
-    parser.add_argument('--imgW', type=int, default=64, help='the width of the input image')
+    parser.add_argument('--imgW', type=int, default=100, help='the width of the input image')
     parser.add_argument('--rgb', action='store_true', help='use rgb input')
     parser.add_argument('--character', type=str, default='0123456789abcdefghijklmnopqrstuvwxyz', help='character label')
     parser.add_argument('--sensitive', action='store_true', help='for sensitive character mode')
@@ -143,7 +129,5 @@ if __name__ == '__main__':
     cudnn.benchmark = True
     cudnn.deterministic = True
     opt.num_gpu = torch.cuda.device_count()
-    print('*'*20)
-    print(opt)
-    print('*'*20)
+
     demo(opt)
