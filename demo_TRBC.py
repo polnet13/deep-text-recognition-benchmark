@@ -13,6 +13,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def demo(opt):
+    print(f'opt: \n\n{opt}')
     """ model configuration """
     if 'CTC' in opt.Prediction:
         converter = CTCLabelConverter(opt.character)
@@ -84,7 +85,10 @@ def demo(opt):
                     pred_max_prob = pred_max_prob[:pred_EOS]
 
                 # calculate confidence score (= multiply of pred_max_prob)
-                confidence_score = pred_max_prob.cumprod(dim=0)[-1]
+                try:
+                    confidence_score = pred_max_prob.cumprod(dim=0)[-1]
+                except:
+                    confidence_score = 0
 
                 print(f'{img_name:25s}\t{pred:25s}\t{confidence_score:0.4f}')
                 log.write(f'{img_name:25s}\t{pred:25s}\t{confidence_score:0.4f}\n')
